@@ -3,15 +3,12 @@ from aiogram.filters import Command, CommandStart, StateFilter, CommandObject, C
 from aiogram.fsm.context import FSMContext
 from aiogram.filters.command import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
-from database import quiz_data
-from service import generate_options_keyboard, get_question, new_quiz, get_quiz_index, update_quiz_index
+from service import generate_options_keyboard, get_question, new_quiz, get_quiz_index, update_quiz_index, get_current_score, get_quiz_length, get_correct_answer
 
 router = Router()
-score = 0
 
 @router.callback_query(F.data == "right_answer")
 async def right_answer(callback: types.CallbackQuery):
-
     await callback.bot.edit_message_reply_markup(
         chat_id=callback.from_user.id,
         message_id=callback.message.message_id,
@@ -20,15 +17,15 @@ async def right_answer(callback: types.CallbackQuery):
 
     await callback.message.answer("Верно!")
     current_question_index = await get_quiz_index(callback.from_user.id)
-    # Обновление номера текущего вопроса в базе данных
     current_question_index += 1
-    score += 1
-    await update_quiz_index(callback.from_user.id, current_question_index, score)
+    await update_quiz_index(callback.from_user.id, current_question_index, 1)
+    
+    total_questions = await get_quiz_length()
 
-
-    if current_question_index < len(quiz_data):
+    if current_question_index < total_questions:
         await get_question(callback.message, callback.from_user.id)
     else:
+        score = await get_current_score(callback.from_user.id)
         await callback.message.answer(f"Это был последний вопрос. Квиз завершен! Ваши очки: {score}.")
 
   
@@ -40,33 +37,31 @@ async def wrong_answer(callback: types.CallbackQuery):
         reply_markup=None
     )
     
-    # Получение текущего вопроса из словаря состояний пользователя
     current_question_index = await get_quiz_index(callback.from_user.id)
-    correct_option = quiz_data[current_question_index]['correct_option']
+    correct_answer = await get_correct_answer(current_question_index)
 
-    await callback.message.answer(f"Неправильно. Правильный ответ: {quiz_data[current_question_index]['options'][correct_option]}")
+    await callback.message.answer(f"Неправильно. Правильный ответ: {correct_answer}")
     
-    # Обновление номера текущего вопроса в базе данных
     current_question_index += 1
     
-    await update_quiz_index(callback.from_user.id, current_question_index, score)
+    await update_quiz_index(callback.from_user.id, current_question_index, 0)
 
+    total_questions = await get_quiz_length()
 
-    if current_question_index < len(quiz_data):
+    if current_question_index < total_questions:
         await get_question(callback.message, callback.from_user.id)
     else:
+        score = await get_current_score(callback.from_user.id)
         await callback.message.answer(f"Это был последний вопрос. Квиз завершен! Ваши очки: {score}.")
 
 
-# Хэндлер на команду /start
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
     builder = ReplyKeyboardBuilder()
     builder.add(types.KeyboardButton(text="Начать игру"))
-    await message.answer("Добро пожаловать в квиз!", reply_markup=builder.as_markup(resize_keyboard=True))
+    image_url="https://storage.yandexcloud.net/quiz-bot-1111/logistic-1.png"
+    await message.answer_photo(photo=image_url, caption="Добро пожаловать в квиз!", reply_markup=builder.as_markup(resize_keyboard=True))
 
-
-# Хэндлер на команду /quiz
 @router.message(F.text=="Начать игру")
 @router.message(Command("quiz"))
 async def cmd_quiz(message: types.Message):
@@ -74,4 +69,5 @@ async def cmd_quiz(message: types.Message):
     await message.answer(f"Давайте начнем квиз!")
     await new_quiz(message)
     
+
 

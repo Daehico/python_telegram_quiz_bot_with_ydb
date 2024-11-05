@@ -20,9 +20,6 @@ def get_ydb_pool(ydb_endpoint, ydb_database, timeout=30):
 def _format_kwargs(kwargs):
     return {"${}".format(key): value for key, value in kwargs.items()}
 
-
-# Заготовки из документации
-# https://ydb.tech/en/docs/reference/ydb-sdk/example/python/#param-prepared-queries
 def execute_update_query(pool, query, **kwargs):
     def callee(session):
         prepared_query = session.prepare(query)
@@ -32,9 +29,6 @@ def execute_update_query(pool, query, **kwargs):
 
     return pool.retry_operation_sync(callee)
 
-
-# Заготовки из документации
-# https://ydb.tech/en/docs/reference/ydb-sdk/example/python/#param-prepared-queries
 def execute_select_query(pool, query, **kwargs):
     def callee(session):
         prepared_query = session.prepare(query)
@@ -45,21 +39,5 @@ def execute_select_query(pool, query, **kwargs):
 
     return pool.retry_operation_sync(callee)    
 
-# Зададим настройки базы данных 
 pool = get_ydb_pool(YDB_ENDPOINT, YDB_DATABASE)
 
-
-# Структура квиза
-quiz_data = [
-    {
-        'question': 'Что такое Python?',
-        'options': ['Язык программирования', 'Тип данных', 'Музыкальный инструмент', 'Змея на английском'],
-        'correct_option': 0
-    },
-    {
-        'question': 'Какой тип данных используется для хранения целых чисел?',
-        'options': ['int', 'float', 'str', 'natural'],
-        'correct_option': 0
-    },
-    # Добавьте другие вопросы
-]
